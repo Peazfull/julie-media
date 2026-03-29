@@ -1,0 +1,9 @@
+.venv/
+secrets/
+output/
+__pycache__/
+*.pyc
+.env
+# Uniquement les slides générés — PAS les assets
+output/**/*.png
+*.DS_Store
