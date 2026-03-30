@@ -188,6 +188,43 @@ def generate_carousel(sujet: str) -> dict:
     return data
 
 
+def generate_caption(sujet: str, hook: str, slides: list) -> str:
+    """
+    Génère une caption TikTok/Instagram optimisée pour le sujet du carrousel.
+    Retourne une string prête à copier-coller.
+    """
+    slides_summary = "\n".join(
+        f"- {s.get('title', '')}" for s in slides if s.get("title")
+    )
+    user_prompt = (
+        f'Génère une caption TikTok et Instagram pour ce carrousel sur le sujet : "{sujet}".\n'
+        f'Hook du carrousel : "{hook}"\n'
+        f'Points abordés :\n{slides_summary}\n\n'
+        "La caption doit :\n"
+        "- Commencer par une accroche forte (1 phrase, peut reprendre le hook)\n"
+        "- Avoir 3-5 lignes courtes et percutantes\n"
+        "- Se terminer par un appel à l'action (question, invitation à sauvegarder ou commenter)\n"
+        "- Inclure 5 à 8 hashtags pertinents sur le TDAH, la parentalité, l'éducation (en français et anglais)\n"
+        "- Être en français\n"
+        "- NE PAS utiliser d'astérisques ni de markdown\n"
+        "Réponds uniquement avec le texte de la caption, sans titre ni commentaire."
+    )
+
+    response = _get_client().chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": (
+                "Tu es une experte en contenu Instagram et TikTok spécialisée TDAH enfant. "
+                "Tu rédiges des captions courtes, engageantes, qui donnent envie de sauvegarder et de commenter."
+            )},
+            {"role": "user", "content": user_prompt},
+        ],
+        temperature=0.8,
+    )
+
+    return response.choices[0].message.content.strip()
+
+
 if __name__ == "__main__":
     import sys
     sujet = sys.argv[1] if len(sys.argv) > 1 else "5 façons de calmer une crise TDAH"

@@ -29,7 +29,7 @@ try:
 except Exception:
     pass
 
-from api.generate_carousel import generate_carousel
+from api.generate_carousel import generate_carousel, generate_caption
 from api.generate_topics import generate_topics
 from utils.drive_uploader import is_drive_configured, upload_carousel
 from utils.image_picker import pick_images_for_carousel, reshuffle
@@ -301,6 +301,11 @@ def _build_and_store_carousel(sujet: str, palette_offset: int = 0) -> None:
                 carousel_id=carousel_id,
                 palette_offset=palette_offset,
             )
+            caption = generate_caption(
+                sujet=sujet,
+                hook=carousel_data.get("hook", ""),
+                slides=carousel_data.get("slides", []),
+            )
         except Exception as exc:
             import traceback
             st.error(f"Erreur génération : {exc}")
@@ -312,6 +317,7 @@ def _build_and_store_carousel(sujet: str, palette_offset: int = 0) -> None:
             "data": carousel_data, "humeur": humeur,
             "images": images_str, "png_paths": png_paths,
             "palette_offset": palette_offset,
+            "caption": caption,
         })
 
 
@@ -375,7 +381,7 @@ def _rebuild_carousel(idx: int) -> None:
     st.session_state.carousels[idx]["png_paths"] = png_paths
 
 
-def _make_zip(carousel: dict) -> bytes:
+def _make_zip(carousel: dict, caption_override: str = "") -> bytes:
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         for path in carousel["png_paths"]:
@@ -386,6 +392,9 @@ def _make_zip(carousel: dict) -> bytes:
             {"sujet": carousel["sujet"], "slides": carousel["data"]},
             ensure_ascii=False, indent=2,
         ))
+        caption_text = caption_override or carousel.get("caption", "")
+        if caption_text:
+            zf.writestr("caption.txt", caption_text)
     return buf.getvalue()
 
 
@@ -574,6 +583,34 @@ for idx, carousel in enumerate(st.session_state.carousels):
         slide_pos=outro_idx,
     )
 
+    # ── Caption TikTok / Instagram ─────────────────────────────────────────
+    st.markdown(
+        '<p style="font-size:0.72rem;font-weight:700;color:#999;text-transform:uppercase;'
+        'letter-spacing:1.2px;margin:1.5rem 0 0.4rem;">📱 Caption TikTok / Instagram</p>',
+        unsafe_allow_html=True,
+    )
+    caption_key = f"{cid}_caption"
+    if caption_key not in st.session_state:
+        st.session_state[caption_key] = carousel.get("caption", "")
+    st.text_area(
+        "Caption", key=caption_key, height=180, label_visibility="collapsed",
+    )
+    cap_col1, cap_col2 = st.columns([1, 4])
+    with cap_col1:
+        if st.button("↻ Regénérer la caption", key=f"regen_caption_{cid}", use_container_width=True):
+            with st.spinner("Génération de la caption…"):
+                try:
+                    new_cap = generate_caption(
+                        sujet=carousel["sujet"],
+                        hook=carousel["data"].get("hook", ""),
+                        slides=carousel["data"].get("slides", []),
+                    )
+                    st.session_state[caption_key] = new_cap
+                    st.session_state.carousels[idx]["caption"] = new_cap
+                except Exception as e:
+                    st.error(f"Erreur caption : {e}")
+            st.rerun()
+
     # ── Action bar ────────────────────────────────────────────────────────
     st.markdown('<div class="action-bar">', unsafe_allow_html=True)
     act1, act2, act3, act4 = st.columns(4)
@@ -595,7 +632,7 @@ for idx, carousel in enumerate(st.session_state.carousels):
     with act3:
         st.download_button(
             label="⬇️  Télécharger ZIP",
-            data=_make_zip(carousel),
+            data=_make_zip(carousel, caption_override=st.session_state.get(f"{cid}_caption", "")),
             file_name=f"carousel_{cid}.zip",
             mime="application/zip",
             use_container_width=True,
