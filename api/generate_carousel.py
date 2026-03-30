@@ -1,5 +1,6 @@
 import json
 import os
+import random
 import re as _re
 from openai import OpenAI
 from dotenv import load_dotenv
@@ -41,14 +42,16 @@ CAROUSEL_SCHEMA = """Structure JSON à remplir :
     }
   ],
   "outro": "<CTA bienveillant + question engageante>",
-  "humeur": "<un mot parmi : colere, content, ecole, excite, fatigue, icones, nourriture, parents_adultes, pensif, peur, triste, zen>"
+  "humeur": "<un mot parmi : colere, content, ecole, excite, fatigue, icones, nourriture, parents_adultes, pensif, peur, triste, zen>",
+  "promo_title": "<accroche courte façon pause narrative qui stoppe le scroll SANS donner l'impression que le carrousel s'arrête — l'auditeur doit sentir que la suite arrive juste après. Exemples de ton : 'Avant la suite, un mot de *Sparky* :' / 'Pause — ça, tu dois le voir :' / 'Juste avant la suite :' / 'On continue, mais d'abord :' / '*Sparky* a quelque chose pour toi :' / 'Entre deux conseils :' — sois créatif, ne recopie pas ces exemples mot pour mot>",
+  "promo_text": "<1-2 phrases qui font le lien entre le sujet du carrousel et le livre 'Les Incroyables Aventures de Sparky le Renard TDAH'. Ex: '*Sparky* t'explique aussi comment gérer ça dans son livre. 7 histoires pour comprendre le TDAH en douceur.'>"
 }
 
 Règles de contenu :
 - AUCUN emoji dans aucun champ.
 - Le hook finit TOUJOURS par ":" ou par "?" (si c'est une question). Jamais par un point, jamais sans ponctuation finale.
 - Les titles ne finissent JAMAIS par un point.
-- Dans CHAQUE champ texte (hook, title, content, outro), entoure 1 à 3 mots clés avec *astérisques* : ex. "*3 erreurs* que font les parents" ou "Le cerveau a besoin de *repères visuels*".
+- Dans CHAQUE champ texte (hook, title, content, outro, promo_text), entoure 1 à 3 mots clés avec *astérisques* : ex. "*3 erreurs* que font les parents" ou "Le cerveau a besoin de *repères visuels*".
 - Le marquage *...* est OBLIGATOIRE dans chaque champ. Ne jamais l'omettre."""
 
 
@@ -101,6 +104,14 @@ def generate_carousel(sujet: str) -> dict:
     for key in ("hook", "slides", "outro", "humeur"):
         if key not in data:
             raise ValueError(f"Clé manquante '{key}' dans la réponse API.\nRéponse : {raw}")
+
+    if "promo_title" not in data or not data["promo_title"].strip():
+        data["promo_title"] = "Avant la suite, regarde :"
+    if "promo_text" not in data or not data["promo_text"].strip():
+        data["promo_text"] = (
+            "*Sparky* aborde aussi ce sujet dans son livre. "
+            "7 histoires pour comprendre le *TDAH* en douceur."
+        )
 
     slides = data["slides"]
     if not isinstance(slides, list) or len(slides) == 0:
@@ -183,7 +194,15 @@ def generate_carousel(sujet: str) -> dict:
     for s in data["slides"]:
         s["title"]   = _ensure_markup(_strip_trailing_dot(_clean_artifacts(s["title"])))
         s["content"] = _ensure_markup(_clean_artifacts(s["content"]))
-    data["outro"] = _ensure_markup(_clean_artifacts(data["outro"]))
+    data["outro"]       = _ensure_markup(_clean_artifacts(data["outro"]))
+    data["promo_title"] = _ensure_markup(_clean_artifacts(data["promo_title"]))
+    data["promo_text"]  = _ensure_markup(_clean_artifacts(data["promo_text"]))
+
+    # Position de la slide promo dans le carousel (3e ou 4e, 1-indexed dans la liste finale)
+    n_slides = len(data["slides"])
+    min_pos  = min(3, n_slides + 1)
+    max_pos  = min(4, n_slides + 1)
+    data["promo_pos"] = random.randint(min_pos, max(min_pos, max_pos))
 
     return data
 

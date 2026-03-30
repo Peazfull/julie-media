@@ -33,6 +33,7 @@ FONT_ANTON   = FONTS_DIR / "Anton-Regular.ttf"
 FONT_POPPINS = FONTS_DIR / "Poppins-Medium.ttf"
 
 ICONS_DIR    = Path(__file__).parent.parent / "assets" / "ICONES"
+LIVRE_IMG    = Path(__file__).parent.parent / "assets" / "images" / "LIVRE" / "Livre.png"
 ARROW_YELLOW = ICONS_DIR / "JAUNE" / "fleche.png"
 ARROW_GREEN  = ICONS_DIR / "VERT"  / "fleche.png"
 
@@ -321,6 +322,84 @@ def _build_content(title: str, content: str, img_path, idx: int,
     return str(out)
 
 
+def _build_promo(text: str, idx: int, out: Path, slide_num: str,
+                 total: int = 5, palette_offset: int = 0,
+                 title: str = "") -> str:
+    """Slide promotionnelle livre — titre Anton, image livre gauche/grande, 'lien en bio' x2."""
+    img, draw, c = _base(idx, palette_offset)
+    dummy = ImageDraw.Draw(Image.new("RGB", (1, 1)))
+
+    # ── Titre (Anton) ──────────────────────────────────────────────────────
+    clean_t = _strip_emojis(title) if title else ""
+    if clean_t:
+        n_t  = len(re.sub(r'[=*]', '', clean_t))
+        fs_t = _auto_size(n_t, large=88, medium=74, small=62)
+        lh_t = int(fs_t * 1.18)
+        ft   = _font(FONT_ANTON, fs_t)
+        tok_t, sw_t = _build_lines(_parse_tokens_multiline(clean_t), ft, ft, TEXT_W, dummy)
+        y0   = DECO_MARGIN + 32
+        y_after_title = _render_lines(draw, tok_t, MARGIN, y0, TEXT_W,
+                                      ft, ft, c["text"], c["accent"], lh_t, sw_t)
+        GAP = 28
+    else:
+        y_after_title = TEXT_Y_MIN
+        GAP = 0
+
+    # ── Corps (Poppins) ────────────────────────────────────────────────────
+    clean_b = _strip_emojis(text)
+    n_b     = len(re.sub(r'[=*]', '', clean_b))
+    fs_b    = _auto_size(n_b, large=60, medium=54, small=48)
+    lh_b    = int(fs_b * 1.5)
+    fb      = _font(FONT_POPPINS, fs_b)
+    tok_b, sw_b = _build_lines(_parse_tokens_multiline(clean_b), fb, fb, TEXT_W, dummy)
+    _render_lines(draw, tok_b, MARGIN, y_after_title + GAP, TEXT_W,
+                  fb, fb, c["text"], c["accent"], lh_b, sw_b)
+
+    # ── Image du livre : grande, ancrée à gauche dans la moitié basse ─────
+    if LIVRE_IMG.exists():
+        try:
+            book = Image.open(LIVRE_IMG).convert("RGBA")
+            # Hauteur cible : ~80% de la moitié basse disponible × 1.5
+            avail_h = CONTENT_BOTTOM - SLIDE_MID - 20
+            book_h  = int(avail_h * 0.92 * 1.5)
+            book_w  = int(book.width * book_h / book.height)
+            # Plafond largeur à 80% du slide
+            if book_w > int(SLIDE_W * 0.80):
+                book_w = int(SLIDE_W * 0.80)
+                book_h = int(book.height * book_w / book.width)
+            book = book.resize((book_w, book_h), Image.LANCZOS)
+            bx = -20
+            by = SLIDE_H - book_h - 5
+            img.paste(book, (bx, by), book)
+        except Exception:
+            pass
+
+    # ── Flèche + "lien en bio" (police x2 → 56px) ─────────────────────────
+    arrow_path = ARROW_YELLOW if (idx + palette_offset) % 2 == 0 else ARROW_GREEN
+    if arrow_path.exists():
+        try:
+            a  = Image.open(arrow_path).convert("RGBA")
+            nh = ARROW_HEIGHT; nw = int(a.width * nh / a.height)
+            a  = a.resize((nw, nh), Image.LANCZOS)
+            ax = SLIDE_W - nw - 40
+            ay = SLIDE_H - nh - 40
+            img.paste(a, (ax, ay), a)
+            fb2   = _font(FONT_POPPINS, 56)
+            label = "lien en bio"
+            bbox  = dummy.textbbox((0, 0), label, font=fb2)
+            lw    = bbox[2] - bbox[0]
+            lx    = SLIDE_W - int(lw) - 100
+            ly    = ay - 70
+            draw.text((lx, ly), label, font=fb2, fill=c["accent"])
+        except Exception:
+            pass
+
+    _draw_number(draw, slide_num, total, c["text"])
+    out.parent.mkdir(parents=True, exist_ok=True)
+    img.save(str(out), "PNG")
+    return str(out)
+
+
 def _build_outro(text: str, img_path, idx: int, out: Path, total: int = 5,
                  palette_offset: int = 0) -> str:
     img, draw, c = _base(idx, palette_offset)
@@ -355,49 +434,78 @@ def _build_outro(text: str, img_path, idx: int, out: Path, total: int = 5,
 # Point d'entrée
 # ---------------------------------------------------------------------------
 
+def _ordered_slide_types(carousel_dict: dict) -> list:
+    """
+    Retourne la liste ordonnée des types de slides :
+    [("hook",), ("content", 0), ("content", 1), ("promo",), ("content", 2), ..., ("outro",)]
+    en respectant promo_pos (position 1-indexed dans la liste finale).
+    """
+    slides    = carousel_dict.get("slides", [])
+    promo_pos = carousel_dict.get("promo_pos", 3)   # position 1-indexed
+    n_content = len(slides)
+    total     = n_content + 3  # hook + content + promo + outro
+
+    # Clip promo_pos entre 2 et (total - 2) pour rester entre hook et outro
+    promo_pos = max(2, min(promo_pos, total - 2))
+
+    order  = [("hook",)]
+    ci     = 0   # content index
+    for pos in range(2, total + 1):   # 2-indexed positions
+        if pos == promo_pos:
+            order.append(("promo",))
+        elif ci < n_content:
+            order.append(("content", ci))
+            ci += 1
+    order.append(("outro",))
+    return order, total
+
+
 def build_single_slide(carousel_dict: dict, images: dict,
                        output_dir, carousel_id: str, slide_pos: int,
                        palette_offset: int = 0) -> str:
-    """
-    Rebuilde uniquement la slide à la position `slide_pos` (0-based dans la liste finale :
-      0 = hook, 1..N = content slides, N+1 = outro).
-    Retourne le path PNG mis à jour.
-    """
+    """Rebuilde uniquement la slide à la position `slide_pos` (0-based dans la liste finale)."""
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    slides = carousel_dict.get("slides", [])
-    total  = len(slides) + 2
 
-    if slide_pos == 0:
+    order, total = _ordered_slide_types(carousel_dict)
+    if slide_pos >= len(order):
+        slide_pos = len(order) - 1
+
+    kind = order[slide_pos]
+    idx  = slide_pos   # idx détermine la couleur via (idx + offset) % 2
+
+    if kind[0] == "hook":
         return _build_hook(
             text=carousel_dict.get("hook", ""),
             img_path=images.get("hook"),
-            idx=0,
-            out=output_dir / f"{carousel_id}_01_hook.png",
-            total=total,
-            palette_offset=palette_offset,
+            idx=idx, out=output_dir / f"{carousel_id}_01_hook.png",
+            total=total, palette_offset=palette_offset,
         )
-    elif slide_pos == total - 1:
+    elif kind[0] == "outro":
         return _build_outro(
             text=carousel_dict.get("outro", ""),
             img_path=images.get("outro"),
-            idx=len(slides) + 1,
-            out=output_dir / f"{carousel_id}_{total:02d}_outro.png",
-            total=total,
-            palette_offset=palette_offset,
+            idx=idx, out=output_dir / f"{carousel_id}_{total:02d}_outro.png",
+            total=total, palette_offset=palette_offset,
+        )
+    elif kind[0] == "promo":
+        pos_num = slide_pos + 1
+        return _build_promo(
+            text=carousel_dict.get("promo_text", ""),
+            title=carousel_dict.get("promo_title", ""),
+            idx=idx, out=output_dir / f"{carousel_id}_{pos_num:02d}_promo.png",
+            slide_num=str(pos_num), total=total, palette_offset=palette_offset,
         )
     else:
-        i = slide_pos - 1
-        slide = slides[i]
+        i = kind[1]
+        slide = carousel_dict["slides"][i]
+        pos_num = slide_pos + 1
         return _build_content(
             title=slide.get("title", ""),
             content=slide.get("content", ""),
             img_path=images.get(f"slide_{i}"),
-            idx=i + 1,
-            out=output_dir / f"{carousel_id}_{i + 2:02d}_slide{i + 1}.png",
-            slide_num=str(i + 2),
-            total=total,
-            palette_offset=palette_offset,
+            idx=idx, out=output_dir / f"{carousel_id}_{pos_num:02d}_slide{i + 1}.png",
+            slide_num=str(pos_num), total=total, palette_offset=palette_offset,
         )
 
 
@@ -407,35 +515,43 @@ def build_carousel(carousel_dict: dict, images: dict,
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    slides = carousel_dict.get("slides", [])
-    total  = len(slides) + 2
-    paths  = []
+    order, total = _ordered_slide_types(carousel_dict)
+    paths = []
 
-    paths.append(_build_hook(
-        text=carousel_dict.get("hook", ""),
-        img_path=images.get("hook"),
-        idx=0,
-        out=output_dir / f"{carousel_id}_01_hook.png",
-        total=total,
-        palette_offset=palette_offset,
-    ))
-    for i, slide in enumerate(slides):
-        paths.append(_build_content(
-            title=slide.get("title", ""),
-            content=slide.get("content", ""),
-            img_path=images.get(f"slide_{i}"),
-            idx=i + 1,
-            out=output_dir / f"{carousel_id}_{i + 2:02d}_slide{i + 1}.png",
-            slide_num=str(i + 2),
-            total=total,
-            palette_offset=palette_offset,
-        ))
-    paths.append(_build_outro(
-        text=carousel_dict.get("outro", ""),
-        img_path=images.get("outro"),
-        idx=len(slides) + 1,
-        out=output_dir / f"{carousel_id}_{total:02d}_outro.png",
-        total=total,
-        palette_offset=palette_offset,
-    ))
+    for slide_pos, kind in enumerate(order):
+        idx     = slide_pos
+        pos_num = slide_pos + 1
+
+        if kind[0] == "hook":
+            paths.append(_build_hook(
+                text=carousel_dict.get("hook", ""),
+                img_path=images.get("hook"),
+                idx=idx, out=output_dir / f"{carousel_id}_01_hook.png",
+                total=total, palette_offset=palette_offset,
+            ))
+        elif kind[0] == "outro":
+            paths.append(_build_outro(
+                text=carousel_dict.get("outro", ""),
+                img_path=images.get("outro"),
+                idx=idx, out=output_dir / f"{carousel_id}_{pos_num:02d}_outro.png",
+                total=total, palette_offset=palette_offset,
+            ))
+        elif kind[0] == "promo":
+            paths.append(_build_promo(
+                text=carousel_dict.get("promo_text", ""),
+                title=carousel_dict.get("promo_title", ""),
+                idx=idx, out=output_dir / f"{carousel_id}_{pos_num:02d}_promo.png",
+                slide_num=str(pos_num), total=total, palette_offset=palette_offset,
+            ))
+        else:
+            i = kind[1]
+            slide = carousel_dict["slides"][i]
+            paths.append(_build_content(
+                title=slide.get("title", ""),
+                content=slide.get("content", ""),
+                img_path=images.get(f"slide_{i}"),
+                idx=idx, out=output_dir / f"{carousel_id}_{pos_num:02d}_slide{i + 1}.png",
+                slide_num=str(pos_num), total=total, palette_offset=palette_offset,
+            ))
+
     return paths

@@ -41,7 +41,7 @@ from api.generate_carousel import generate_carousel, generate_caption
 from api.generate_topics import generate_topics
 from utils.drive_uploader import is_drive_configured, upload_carousel
 from utils.image_picker import pick_images_for_carousel, reshuffle
-from utils.slide_builder import build_carousel, build_single_slide
+from utils.slide_builder import build_carousel, build_single_slide, _ordered_slide_types
 
 OUTPUT_DIR = Path(__file__).parent / "output"
 OUTPUT_DIR.mkdir(exist_ok=True)
@@ -358,10 +358,13 @@ def _rebuild_single(carousel_idx: int, slide_pos: int) -> None:
         for i in range(n)
     ]
     edited_data = {
-        "hook":   st.session_state.get(f"{cid}_hook",  c["data"].get("hook", "")),
-        "slides": edited_slides,
-        "outro":  st.session_state.get(f"{cid}_outro", c["data"].get("outro", "")),
-        "humeur": c["data"].get("humeur", "content"),
+        "hook":       st.session_state.get(f"{cid}_hook",  c["data"].get("hook", "")),
+        "slides":     edited_slides,
+        "outro":      st.session_state.get(f"{cid}_outro", c["data"].get("outro", "")),
+        "humeur":     c["data"].get("humeur", "content"),
+        "promo_title": st.session_state.get(f"{cid}_promo_title", c["data"].get("promo_title", "")),
+        "promo_text":  st.session_state.get(f"{cid}_promo",       c["data"].get("promo_text", "")),
+        "promo_pos":   c["data"].get("promo_pos", 3),
     }
     new_path = build_single_slide(
         carousel_dict=edited_data, images=c["images"],
@@ -390,10 +393,13 @@ def _rebuild_carousel(idx: int) -> None:
         for i in range(n_slides)
     ]
     edited_data = {
-        "hook":   st.session_state.get(f"{cid}_hook",  c["data"].get("hook", "")),
-        "slides": edited_slides,
-        "outro":  st.session_state.get(f"{cid}_outro", c["data"].get("outro", "")),
-        "humeur": c["data"].get("humeur", "content"),
+        "hook":       st.session_state.get(f"{cid}_hook",  c["data"].get("hook", "")),
+        "slides":     edited_slides,
+        "outro":      st.session_state.get(f"{cid}_outro", c["data"].get("outro", "")),
+        "humeur":     c["data"].get("humeur", "content"),
+        "promo_title": st.session_state.get(f"{cid}_promo_title", c["data"].get("promo_title", "")),
+        "promo_text":  st.session_state.get(f"{cid}_promo",       c["data"].get("promo_text", "")),
+        "promo_pos":   c["data"].get("promo_pos", 3),
     }
     png_paths = build_carousel(
         carousel_dict=edited_data, images=c["images"],
@@ -405,19 +411,24 @@ def _rebuild_carousel(idx: int) -> None:
 
 
 def _make_zip(carousel: dict, caption_override: str = "") -> bytes:
+    # Nom du sous-dossier basé sur le sujet (nettoyé)
+    import re as _re
+    folder = _re.sub(r'[^\w\s-]', '', carousel["sujet"]).strip()
+    folder = _re.sub(r'[\s]+', '_', folder)[:60]
+
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         for i, path in enumerate(carousel["png_paths"], start=1):
             p = Path(path)
             if p.exists():
-                zf.write(p, f"slide{i}.png")
-        zf.writestr("carousel.json", json.dumps(
+                zf.write(p, f"{folder}/slide{i}.png")
+        zf.writestr(f"{folder}/carousel.json", json.dumps(
             {"sujet": carousel["sujet"], "slides": carousel["data"]},
             ensure_ascii=False, indent=2,
         ))
         caption_text = caption_override or carousel.get("caption", "")
         if caption_text:
-            zf.writestr("caption.txt", caption_text)
+            zf.writestr(f"{folder}/caption.txt", caption_text)
     return buf.getvalue()
 
 
@@ -496,8 +507,7 @@ for idx, carousel in enumerate(st.session_state.carousels):
     humeur   = carousel["humeur"]
     emoji    = MOOD_EMOJI.get(humeur, "✨")
     slides_data  = carousel["data"].get("slides", [])
-    n_content    = len(slides_data)
-    total_slides = n_content + 2
+    order, total_slides = _ordered_slide_types(carousel["data"])
 
     # ── Wrapper card ──────────────────────────────────────────────────────
     st.markdown('<div class="carousel-card">', unsafe_allow_html=True)
@@ -545,13 +555,14 @@ for idx, carousel in enumerate(st.session_state.carousels):
                     "color:#bbb;font-size:0.8rem;'>Pas d'image</div>",
                     unsafe_allow_html=True,
                 )
-            img_path = carousel["images"].get(img_key)
-            if st.button("🔀 Changer l'image", key=f"reshuffle_{cid}_{img_key}",
-                         use_container_width=True):
-                new_img = reshuffle(humeur, exclude_path=Path(img_path) if img_path else None)
-                st.session_state.carousels[idx]["images"][img_key] = str(new_img) if new_img else None
-                _rebuild_carousel(idx)
-                st.rerun()
+            if img_key != "promo":
+                img_path = carousel["images"].get(img_key)
+                if st.button("🔀 Changer l'image", key=f"reshuffle_{cid}_{img_key}",
+                             use_container_width=True):
+                    new_img = reshuffle(humeur, exclude_path=Path(img_path) if img_path else None)
+                    st.session_state.carousels[idx]["images"][img_key] = str(new_img) if new_img else None
+                    _rebuild_carousel(idx)
+                    st.rerun()
 
         with col_fields:
             for (state_key, field_label, default_val, height) in fields:
@@ -567,44 +578,48 @@ for idx, carousel in enumerate(st.session_state.carousels):
 
         st.divider()
 
-    # Hook
-    _slide_row(
-        label="🎣 Hook", slide_index=0,
-        png_path=carousel["png_paths"][0] if carousel["png_paths"] else None,
-        img_key="hook",
-        fields=[(f"{cid}_hook", "Texte du hook", carousel["data"].get("hook", ""), 100)],
-        badge_color=BRAND_GREEN, bg=CARD_GREEN,
-        slide_pos=0,
-    )
+    # ── Rendu de toutes les slides dans l'ordre (hook / content / promo / outro)
+    for slide_pos, kind in enumerate(order):
+        bg           = CARD_GREEN if slide_pos % 2 == 0 else CARD_YELLOW
+        badge_color  = BRAND_GREEN if slide_pos % 2 == 0 else "#b8860b"
+        png_path     = carousel["png_paths"][slide_pos] if slide_pos < len(carousel["png_paths"]) else None
 
-    # Slides contenu
-    for i, slide in enumerate(slides_data):
-        bg = CARD_GREEN if (i + 1) % 2 == 0 else CARD_YELLOW
-        badge_color = BRAND_GREEN if (i + 1) % 2 == 0 else "#b8860b"
-        png_path = carousel["png_paths"][i + 1] if (i + 1) < len(carousel["png_paths"]) else None
-        _slide_row(
-            label=f"💡 Point {i + 1}", slide_index=i + 1,
-            png_path=png_path, img_key=f"slide_{i}",
-            fields=[
-                (f"{cid}_slide_{i}_title",   "Titre (Anton)",   slide.get("title", ""),   70),
-                (f"{cid}_slide_{i}_content", "Contenu (Poppins)", slide.get("content", ""), 110),
-            ],
-            badge_color=badge_color, bg=bg,
-            slide_pos=i + 1,
-        )
-
-    # Outro
-    outro_idx = total_slides - 1
-    outro_bg = CARD_GREEN if outro_idx % 2 == 0 else CARD_YELLOW
-    outro_badge = BRAND_GREEN if outro_idx % 2 == 0 else "#b8860b"
-    _slide_row(
-        label="🙌 Outro", slide_index=outro_idx,
-        png_path=carousel["png_paths"][outro_idx] if outro_idx < len(carousel["png_paths"]) else None,
-        img_key="outro",
-        fields=[(f"{cid}_outro", "Texte outro", carousel["data"].get("outro", ""), 110)],
-        badge_color=outro_badge, bg=outro_bg,
-        slide_pos=outro_idx,
-    )
+        if kind[0] == "hook":
+            _slide_row(
+                label="🎣 Hook", slide_index=slide_pos,
+                png_path=png_path, img_key="hook",
+                fields=[(f"{cid}_hook", "Texte du hook", carousel["data"].get("hook", ""), 100)],
+                badge_color=badge_color, bg=bg, slide_pos=slide_pos,
+            )
+        elif kind[0] == "outro":
+            _slide_row(
+                label="🙌 Outro", slide_index=slide_pos,
+                png_path=png_path, img_key="outro",
+                fields=[(f"{cid}_outro", "Texte outro", carousel["data"].get("outro", ""), 110)],
+                badge_color=badge_color, bg=bg, slide_pos=slide_pos,
+            )
+        elif kind[0] == "promo":
+            _slide_row(
+                label="📖 Slide Livre", slide_index=slide_pos,
+                png_path=png_path, img_key="promo",
+                fields=[
+                    (f"{cid}_promo_title", "Titre accroche (Anton)", carousel["data"].get("promo_title", ""), 60),
+                    (f"{cid}_promo",       "Texte promo (Poppins)",  carousel["data"].get("promo_text", ""),  110),
+                ],
+                badge_color="#9b59b6", bg="#f5f0ff", slide_pos=slide_pos,
+            )
+        else:
+            i = kind[1]
+            slide = slides_data[i]
+            _slide_row(
+                label=f"💡 Point {i + 1}", slide_index=slide_pos,
+                png_path=png_path, img_key=f"slide_{i}",
+                fields=[
+                    (f"{cid}_slide_{i}_title",   "Titre (Anton)",    slide.get("title", ""),   70),
+                    (f"{cid}_slide_{i}_content", "Contenu (Poppins)", slide.get("content", ""), 110),
+                ],
+                badge_color=badge_color, bg=bg, slide_pos=slide_pos,
+            )
 
     # ── Caption TikTok / Instagram ─────────────────────────────────────────
     st.markdown(
