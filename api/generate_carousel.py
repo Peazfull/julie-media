@@ -43,8 +43,8 @@ CAROUSEL_SCHEMA = """Structure JSON à remplir :
   ],
   "outro": "<CTA bienveillant + question engageante>",
   "humeur": "<un mot parmi : colere, content, ecole, excite, fatigue, icones, nourriture, parents_adultes, pensif, peur, triste, zen>",
-  "promo_title": "<accroche courte façon pause narrative qui stoppe le scroll SANS donner l'impression que le carrousel s'arrête — l'auditeur doit sentir que la suite arrive juste après. Exemples de ton : 'Avant la suite, un mot de *Sparky* :' / 'Pause — ça, tu dois le voir :' / 'Juste avant la suite :' / 'On continue, mais d'abord :' / '*Sparky* a quelque chose pour toi :' / 'Entre deux conseils :' — sois créatif, ne recopie pas ces exemples mot pour mot>",
-  "promo_text": "<1-2 phrases courtes et intrigantes qui créent de la curiosité pour le livre 'Les Incroyables Aventures de Sparky le Renard TDAH' — sans jamais citer le titre en entier ni faire une publicité directe. Le ton est chaleureux, complice, comme un ami qui murmure un bon plan. On évoque ce que l'enfant ou le parent va ressentir/découvrir, pas ce que le livre contient. Ex de bon ton : '*Sparky* a vécu exactement ça. Et il a trouvé comment s'en sortir.' / 'Il existe une histoire qui explique ce moment mieux que n'importe quel conseil.' / 'Ton enfant a peut-être juste besoin d'un héros qui lui ressemble.'>"
+  "promo_title": "<accroche courte façon pause narrative qui stoppe le scroll SANS donner l'impression que le carrousel s'arrête. Ex : 'Juste avant la suite :' / 'On continue, mais d'abord :' / '*Sparky* a quelque chose pour toi :' / 'Entre deux conseils :' — sois créatif, ne recopie pas>",
+  "promo_text": "<1-2 phrases douces qui COMMENCENT par 'Dans les Incroyables Aventures de *Sparky*, le renard TDAH,' puis font le lien émotionnel avec le sujet du carrousel. Ton bienveillant, complice, jamais vendeur. Ex : 'Dans les Incroyables Aventures de *Sparky*, le renard TDAH, ton enfant découvre qu'il n'est pas seul — et que son cerveau est une vraie *force*.' / 'Dans les Incroyables Aventures de *Sparky*, le renard TDAH, chaque histoire transforme un moment difficile en *victoire du quotidien*.' — varie la suite, ne recopie pas>"
 }
 
 Règles de contenu :
@@ -106,11 +106,11 @@ def generate_carousel(sujet: str) -> dict:
             raise ValueError(f"Clé manquante '{key}' dans la réponse API.\nRéponse : {raw}")
 
     if "promo_title" not in data or not data["promo_title"].strip():
-        data["promo_title"] = "Avant la suite, regarde :"
+        data["promo_title"] = "Juste avant la suite :"
     if "promo_text" not in data or not data["promo_text"].strip():
         data["promo_text"] = (
-            "Il existe une *histoire* qui explique ce moment mieux que n'importe quel conseil. "
-            "Ton enfant a peut-être juste besoin d'un héros qui lui *ressemble*."
+            "Dans les Incroyables Aventures de *Sparky*, le renard TDAH, "
+            "ton enfant découvre qu'il n'est pas seul — et que son cerveau est une vraie *force*."
         )
 
     slides = data["slides"]
