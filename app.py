@@ -52,52 +52,31 @@ if _app_password:
     if not st.session_state.get("_authenticated"):
         st.markdown(f"""
         <style>
-          /* Cache tout sauf la login box */
-          #root > div:first-child {{ background: #F5F4F0; }}
-          .login-wrap {{
-            display: flex; flex-direction: column; align-items: center;
-            justify-content: center; min-height: 80vh;
-          }}
-          .login-card {{
-            background: #fff; border-radius: 20px;
-            box-shadow: 0 4px 32px rgba(0,0,0,0.09);
-            padding: 2.5rem 2rem 2rem; width: 100%; max-width: 340px;
-            text-align: center;
-          }}
-          .login-card h1 {{
-            color: {BRAND_GREEN}; font-size: 1.6rem; font-weight: 900;
-            margin: 0.6rem 0 0.2rem; letter-spacing: -0.5px;
-          }}
-          .login-card .sub {{
-            color: #999; font-size: 0.82rem; margin-bottom: 1.6rem;
-          }}
-          /* Réduit l'input password */
-          div[data-testid="stTextInput"] {{
-            max-width: 340px; margin: 0 auto;
-          }}
+          .block-container {{ padding-top: 0 !important; }}
+          section[data-testid="stMain"] .stVerticalBlock {{ gap: 0 !important; }}
           div[data-testid="stTextInput"] input {{
-            font-size: 0.92rem !important;
-            padding: 0.5rem 0.9rem !important;
-            border-radius: 10px !important;
-            text-align: center;
-          }}
-          /* Bouton centré */
-          div[data-testid="stButton"] {{
-            max-width: 340px; margin: 0.5rem auto 0;
+            text-align: center; border-radius: 10px !important;
           }}
         </style>
-        <div class="login-wrap">
-          <div class="login-card">
-            <div style="font-size:2.6rem">🧠</div>
-            <h1>Sparky</h1>
-            <p class="sub">Accès réservé</p>
-          </div>
-        </div>
+        <div style="min-height:26vh"></div>
         """, unsafe_allow_html=True)
 
         _, col, _ = st.columns([1, 2, 1])
         with col:
-            pwd = st.text_input("Mot de passe", type="password",
+            st.markdown(f"""
+            <div style="background:#fff; border-radius:20px 20px 0 0;
+                        box-shadow:0 -2px 20px rgba(0,0,0,0.07);
+                        padding:2.4rem 2rem 1.4rem; text-align:center;">
+              <div style="font-size:2.6rem">🧠</div>
+              <h1 style="color:{BRAND_GREEN};font-size:1.55rem;font-weight:900;
+                         margin:0.4rem 0 0.15rem;letter-spacing:-0.5px;">Sparky</h1>
+              <p style="color:#aaa;font-size:0.82rem;margin:0;">Accès réservé</p>
+            </div>
+            <div style="background:#fff; border-radius:0 0 20px 20px;
+                        box-shadow:0 4px 20px rgba(0,0,0,0.07);
+                        padding:0.9rem 1.5rem 1.4rem;">
+            """, unsafe_allow_html=True)
+            pwd = st.text_input("pwd", type="password",
                                 label_visibility="collapsed",
                                 placeholder="Mot de passe…")
             if st.button("Accéder →", type="primary", use_container_width=True):
@@ -106,6 +85,7 @@ if _app_password:
                     st.rerun()
                 else:
                     st.error("Mot de passe incorrect.")
+            st.markdown('</div>', unsafe_allow_html=True)
         st.stop()
 
 MOOD_EMOJI = {
