@@ -50,27 +50,62 @@ CARD_YELLOW  = "#fffbea"   # fond carte slide impaire
 _app_password = os.environ.get("APP_PASSWORD", "")
 if _app_password:
     if not st.session_state.get("_authenticated"):
-        st.markdown("""
+        st.markdown(f"""
         <style>
-        .login-box { max-width:360px; margin:10vh auto; padding:2.5rem;
-            background:#fff; border-radius:16px;
-            box-shadow:0 4px 24px rgba(0,0,0,0.10); }
-        .login-box h2 { color:#0c6405; margin-bottom:0.2rem; font-size:1.4rem; }
-        .login-box p  { color:#888; font-size:0.85rem; margin-bottom:1.5rem; }
+          /* Cache tout sauf la login box */
+          #root > div:first-child {{ background: #F5F4F0; }}
+          .login-wrap {{
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: center; min-height: 80vh;
+          }}
+          .login-card {{
+            background: #fff; border-radius: 20px;
+            box-shadow: 0 4px 32px rgba(0,0,0,0.09);
+            padding: 2.5rem 2rem 2rem; width: 100%; max-width: 340px;
+            text-align: center;
+          }}
+          .login-card h1 {{
+            color: {BRAND_GREEN}; font-size: 1.6rem; font-weight: 900;
+            margin: 0.6rem 0 0.2rem; letter-spacing: -0.5px;
+          }}
+          .login-card .sub {{
+            color: #999; font-size: 0.82rem; margin-bottom: 1.6rem;
+          }}
+          /* Réduit l'input password */
+          div[data-testid="stTextInput"] {{
+            max-width: 340px; margin: 0 auto;
+          }}
+          div[data-testid="stTextInput"] input {{
+            font-size: 0.92rem !important;
+            padding: 0.5rem 0.9rem !important;
+            border-radius: 10px !important;
+            text-align: center;
+          }}
+          /* Bouton centré */
+          div[data-testid="stButton"] {{
+            max-width: 340px; margin: 0.5rem auto 0;
+          }}
         </style>
-        <div class="login-box">
-          <h2>🧠 Sparky</h2>
-          <p>Accès réservé — entre le mot de passe</p>
+        <div class="login-wrap">
+          <div class="login-card">
+            <div style="font-size:2.6rem">🧠</div>
+            <h1>Sparky</h1>
+            <p class="sub">Accès réservé</p>
+          </div>
         </div>
         """, unsafe_allow_html=True)
-        pwd = st.text_input("Mot de passe", type="password", label_visibility="collapsed",
-                            placeholder="Mot de passe…")
-        if st.button("Accéder", type="primary"):
-            if pwd == _app_password:
-                st.session_state["_authenticated"] = True
-                st.rerun()
-            else:
-                st.error("Mot de passe incorrect.")
+
+        _, col, _ = st.columns([1, 2, 1])
+        with col:
+            pwd = st.text_input("Mot de passe", type="password",
+                                label_visibility="collapsed",
+                                placeholder="Mot de passe…")
+            if st.button("Accéder →", type="primary", use_container_width=True):
+                if pwd == _app_password:
+                    st.session_state["_authenticated"] = True
+                    st.rerun()
+                else:
+                    st.error("Mot de passe incorrect.")
         st.stop()
 
 MOOD_EMOJI = {
