@@ -13,9 +13,10 @@ load_dotenv(dotenv_path=Path(__file__).parent / "secrets" / ".env")
 # ---------------------------------------------------------------------------
 # Config page — doit être le PREMIER appel Streamlit
 # ---------------------------------------------------------------------------
+_favicon = Path(__file__).parent / "assets" / "images" / "content" / "content1.png"
 st.set_page_config(
     page_title="Carrousel TDAH",
-    page_icon="🧠",
+    page_icon=str(_favicon) if _favicon.exists() else "🧠",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
