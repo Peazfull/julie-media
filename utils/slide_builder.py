@@ -185,8 +185,8 @@ def _paste_mascot(img: Image.Image, path, text_bottom: int) -> None:
         gap   = 20
         avail_h = CONTENT_BOTTOM - text_bottom - gap
         avail_w = SLIDE_W - 2 * MARGIN
-        # Mascotte : entre 150 et 400 px de haut
-        th = max(150, min(400, int(avail_h * 0.92)))
+        # Mascotte : entre 150 et 480 px de haut (×1.2)
+        th = max(150, min(480, int(avail_h * 0.92 * 1.2)))
         tw = int(raw.width * th / raw.height)
         if tw > avail_w:
             tw = avail_w; th = int(raw.height * tw / raw.width)
