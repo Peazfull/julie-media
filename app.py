@@ -384,10 +384,10 @@ def _rebuild_carousel(idx: int) -> None:
 def _make_zip(carousel: dict, caption_override: str = "") -> bytes:
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
-        for path in carousel["png_paths"]:
+        for i, path in enumerate(carousel["png_paths"], start=1):
             p = Path(path)
             if p.exists():
-                zf.write(p, p.name)
+                zf.write(p, f"slide{i}.png")
         zf.writestr("carousel.json", json.dumps(
             {"sujet": carousel["sujet"], "slides": carousel["data"]},
             ensure_ascii=False, indent=2,
