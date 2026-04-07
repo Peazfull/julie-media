@@ -382,9 +382,14 @@ with col_title:
 def _build_and_store_carousel(sujet: str, palette_offset: int = 0) -> None:
     with st.spinner(f"✨ Génération du carrousel pour « {sujet} »…"):
         try:
-            carousel_data = generate_carousel(sujet, ton=_get_ton()["carousel"])
-
-            humeur = carousel_data.get("humeur", "content")
+            humeur_preset = _get_humeur_preset()
+            carousel_data = generate_carousel(
+                sujet,
+                ton=_get_ton()["carousel"],
+                humeur_hint=humeur_preset,
+            )
+            humeur = humeur_preset if humeur_preset else carousel_data.get("humeur", "content")
+            carousel_data["humeur"] = humeur
             n_slides = len(carousel_data.get("slides", []))
             images_paths = pick_images_for_carousel(humeur, n_content_slides=n_slides)
             images_str = {k: str(v) if v else None for k, v in images_paths.items()}
@@ -510,15 +515,45 @@ def _make_zip(carousel: dict, caption_override: str = "") -> bytes:
 # ---------------------------------------------------------------------------
 st.markdown('<p class="section-title">💡 Choisis un sujet</p>', unsafe_allow_html=True)
 
-selected_ton = st.select_slider(
-    "Ton du contenu",
+# ── Panneau de configuration ──────────────────────────────────────────────
+st.markdown('<p style="font-size:0.72rem;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:0.4rem;">⚙️ Configuration</p>', unsafe_allow_html=True)
+
+cfg1, cfg2 = st.columns(2)
+with cfg1:
+    st.selectbox(
+        "🎨 Couleur slide 1",
+        ["🟢 Commencer en vert", "🟡 Commencer en jaune"],
+        index=0, key="start_color_select",
+    )
+with cfg2:
+    HUMEUR_OPTIONS = ["🎲 Auto"] + [f"{MOOD_EMOJI.get(m,'✨')} {m}" for m in sorted(MOOD_EMOJI.keys())]
+    st.selectbox(
+        "🖼️ Thème des images",
+        HUMEUR_OPTIONS,
+        index=0, key="humeur_select",
+    )
+
+st.select_slider(
+    "🎭 Ton du contenu",
     options=TON_LABELS,
     value="🔥 Viral",
     key="ton_select",
 )
 
+def _get_palette_offset() -> int:
+    return 1 if "jaune" in st.session_state.get("start_color_select", "vert").lower() else 0
+
 def _get_ton() -> dict:
     return TON_LEVELS[st.session_state.get("ton_select", "🔥 Viral")]
+
+def _get_humeur_preset() -> str:
+    """Retourne la humeur présélectionnée, ou '' si Auto."""
+    val = st.session_state.get("humeur_select", "🎲 Auto")
+    if val == "🎲 Auto":
+        return ""
+    return val.split(" ", 1)[1]   # retire l'emoji
+
+st.markdown("<hr style='margin:0.8rem 0;border:none;border-top:1px solid #E8E5DE;'>", unsafe_allow_html=True)
 
 btn_gen, btn_new = st.columns([2, 1])
 with btn_gen:
@@ -540,17 +575,6 @@ with btn_new:
                     st.session_state.prev_topics = list(set(st.session_state.prev_topics + topics))[-30:]
                 except Exception as exc:
                     st.error(f"Erreur API : {exc}")
-
-start_color = st.selectbox(
-    "Couleur slide 1 :",
-    ["🟢 Commencer en vert", "🟡 Commencer en jaune"],
-    index=0,
-    key="start_color_select",
-    label_visibility="visible",
-)
-
-def _get_palette_offset() -> int:
-    return 1 if "jaune" in st.session_state.get("start_color_select", "vert").lower() else 0
 
 # Grille 2 colonnes pour les topics
 if st.session_state.topics:

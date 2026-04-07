@@ -65,7 +65,7 @@ def _get_client() -> OpenAI:
     return _client
 
 
-def generate_carousel(sujet: str, ton: str = "") -> dict:
+def generate_carousel(sujet: str, ton: str = "", humeur_hint: str = "") -> dict:
     """
     Retourne un dict :
     {
@@ -76,7 +76,8 @@ def generate_carousel(sujet: str, ton: str = "") -> dict:
     }
     Le nombre de slides est déterminé par le sujet (ex: "5 façons de..." → 5 slides).
     """
-    ton_instruction = f"\n\nTON ET STYLE REQUIS pour ce carrousel : {ton}" if ton else ""
+    ton_instruction    = f"\n\nTON ET STYLE REQUIS pour ce carrousel : {ton}" if ton else ""
+    humeur_instruction = f"\n\nTHÈME ÉMOTIONNEL IMPOSÉ : utilise impérativement humeur = \"{humeur_hint}\" dans ta réponse JSON." if humeur_hint else ""
 
     user_prompt = (
         f'Crée un carrousel Instagram sur le sujet : "{sujet}". '
@@ -87,6 +88,7 @@ def generate_carousel(sujet: str, ton: str = "") -> dict:
         "génère exactement ce nombre de slides. Sinon, génère le nombre optimal (2 à 5). "
         "Le nombre de slides ne doit JAMAIS dépasser 5. "
         f"{ton_instruction}"
+        f"{humeur_instruction}"
         f"\nRéponds UNIQUEMENT avec ce JSON exact :\n{CAROUSEL_SCHEMA}"
     )
 
