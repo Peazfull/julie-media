@@ -40,7 +40,7 @@ except Exception:
 from api.generate_carousel import generate_carousel, generate_caption
 from api.generate_topics import generate_topics
 from utils.drive_uploader import is_drive_configured, upload_carousel
-from utils.image_picker import pick_images_for_carousel, reshuffle
+from utils.image_picker import pick_images_for_carousel, reshuffle, _list_mood_images
 from utils.slide_builder import build_carousel, build_single_slide, _ordered_slide_types
 
 OUTPUT_DIR = Path(__file__).parent / "output"
@@ -683,13 +683,23 @@ for idx, carousel in enumerate(st.session_state.carousels):
                     unsafe_allow_html=True,
                 )
             if img_key != "promo":
-                img_path = carousel["images"].get(img_key)
-                if st.button("🔀 Changer l'image", key=f"reshuffle_{cid}_{img_key}",
-                             use_container_width=True):
-                    new_img = reshuffle(humeur, exclude_path=Path(img_path) if img_path else None)
-                    st.session_state.carousels[idx]["images"][img_key] = str(new_img) if new_img else None
-                    _rebuild_carousel(idx)
-                    st.rerun()
+                with st.expander("🖼️ Choisir une image"):
+                    all_imgs = _list_mood_images(humeur)
+                    if not all_imgs:
+                        st.caption("Aucune image disponible pour ce thème.")
+                    else:
+                        n_cols = 4
+                        rows = [all_imgs[i:i+n_cols] for i in range(0, len(all_imgs), n_cols)]
+                        for row in rows:
+                            cols = st.columns(n_cols)
+                            for ci2, img_p in enumerate(row):
+                                with cols[ci2]:
+                                    st.image(str(img_p), use_container_width=True)
+                                    if st.button("✓", key=f"pick_{cid}_{img_key}_{img_p.name}",
+                                                 use_container_width=True):
+                                        st.session_state.carousels[idx]["images"][img_key] = str(img_p)
+                                        _rebuild_single(idx, slide_pos)
+                                        st.rerun()
 
         with col_fields:
             for (state_key, field_label, default_val, height) in fields:
