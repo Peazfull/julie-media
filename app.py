@@ -518,7 +518,6 @@ for idx, carousel in enumerate(st.session_state.carousels):
         st.markdown(
             f'<div class="carousel-head">'
             f'<span class="carousel-head-title">📌 {carousel["sujet"]}</span>'
-            f'<span class="mood-badge">{emoji} {humeur}</span>'
             f'</div>',
             unsafe_allow_html=True,
         )
@@ -526,6 +525,27 @@ for idx, carousel in enumerate(st.session_state.carousels):
         if st.button("🗑️", key=f"del_{cid}", help="Supprimer"):
             st.session_state.carousels.pop(idx)
             st.rerun()
+
+    # ── Sélecteur de thème (humeur) ───────────────────────────────────────
+    MOOD_OPTIONS = sorted(MOOD_EMOJI.keys())
+    mood_labels  = [f"{MOOD_EMOJI.get(m, '✨')} {m}" for m in MOOD_OPTIONS]
+    current_mood_label = f"{MOOD_EMOJI.get(humeur, '✨')} {humeur}"
+    sel_col, _ = st.columns([2, 5])
+    with sel_col:
+        selected_label = st.selectbox(
+            "🎨 Thème des images",
+            mood_labels,
+            index=mood_labels.index(current_mood_label) if current_mood_label in mood_labels else 0,
+            key=f"mood_select_{cid}",
+        )
+    selected_mood = selected_label.split(" ", 1)[1]
+    if selected_mood != humeur:
+        new_images = pick_images_for_carousel(selected_mood, n_content_slides=len(slides_data))
+        new_images_str = {k: str(v) if v else None for k, v in new_images.items()}
+        st.session_state.carousels[idx]["humeur"]  = selected_mood
+        st.session_state.carousels[idx]["images"]  = new_images_str
+        _rebuild_carousel(idx)
+        st.rerun()
 
     # ── Slides : layout vertical ──────────────────────────────────────────
     def _slide_row(label, slide_index, png_path, img_key, fields, badge_color, bg, slide_pos):
