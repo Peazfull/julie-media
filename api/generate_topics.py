@@ -30,10 +30,12 @@ SYSTEM_PROMPT = (
 )
 
 
-def generate_topics(prev_topics=None) -> list:
-    """Retourne une liste de 5 sujets de carrousel uniques."""
+def generate_topics(prev_topics=None, ton: str = "") -> list:
+    """Retourne une liste de 6 sujets de carrousel uniques."""
     prev_topics = prev_topics or []
     prev_str = ", ".join(f'"{t}"' for t in prev_topics) if prev_topics else "aucun"
+
+    ton_instruction = f"\n\nTON ET STYLE REQUIS : {ton}" if ton else ""
 
     user_prompt = (
         "Génère 6 sujets de carrousel Instagram pour des parents d'enfants TDAH. "
@@ -42,18 +44,12 @@ def generate_topics(prev_topics=None) -> list:
         "Techniques à utiliser : curiosity gap (ce que personne ne te dit), pattern interrupt (contre-intuition), "
         "promesse ultra-concrète, mot émotionnel fort, identification immédiate du parent. "
         "JAMAIS de titre générique, JAMAIS de titre déjà vu. "
-        "\n\nMix obligatoire sur les 5 : "
-        "• 3 narratifs/révélateurs SANS chiffre — provoquent la curiosité ou brisent une croyance "
-        '(ex: "Ce que le cerveau TDAH de ton enfant essaie vraiment de te dire", '
-        '"Pourquoi punir un enfant TDAH empire tout (et ce qui marche vraiment)", '
-        '"TDAH : le petit rituel du soir que personne ne t\'explique") ; '
-        "• 2 avec chiffre ENTRE 3 ET 5 — promesse actionnable et précise "
-        '(ex: "3 phrases à dire à ton enfant TDAH quand il explose", '
-        '"5 signaux que ton enfant est en surcharge (et pas juste difficile)") ; '
-        "• 1 question ou mythe brisé — interpelle directement le parent "
-        '(ex: "Ton enfant TDAH est-il vraiment paresseux ? La réponse va te surprendre", '
-        '"Non, ton enfant ne fait pas exprès. Voilà la preuve."). '
-        "\n\nChaque sujet doit être bienveillant ET expert ET clickbait. "
+        "\n\nMix obligatoire sur les 6 : "
+        "• 3 narratifs/révélateurs SANS chiffre — provoquent la curiosité ou brisent une croyance ; "
+        "• 2 avec chiffre ENTRE 3 ET 5 — promesse actionnable et précise ; "
+        "• 1 question ou mythe brisé — interpelle directement le parent. "
+        f"{ton_instruction}"
+        "\n\nChaque sujet doit être bienveillant ET expert. "
         'Réponds UNIQUEMENT avec un JSON : {"topics": ["sujet1", ..., "sujet6"]}'
     )
 

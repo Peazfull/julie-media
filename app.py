@@ -95,6 +95,79 @@ if _app_password:
             st.markdown('</div>', unsafe_allow_html=True)
         st.stop()
 
+TON_LEVELS = {
+    "🎓 Éducatif": {
+        "label": "🎓 Éducatif",
+        "topics": (
+            "Ton style est expert et pédagogique. Les sujets apportent de la valeur concrète, "
+            "expliquent un mécanisme du TDAH ou donnent des outils validés. "
+            "Ton calme, rassurant, crédible. Pas d'accroche choc."
+        ),
+        "carousel": (
+            "Ton style est expert, pédagogique et bienveillant. "
+            "Le contenu explique clairement, rassure et donne des outils concrets. "
+            "Pas de provocation, pas d'exagération — juste de la valeur pure."
+        ),
+    },
+    "💡 Pratique": {
+        "label": "💡 Pratique",
+        "topics": (
+            "Les sujets proposent des solutions immédiates et actionnables. "
+            "Format 'X astuces', 'X étapes', 'X phrases à dire'. "
+            "Promesse concrète, résultat mesurable, applicable dès ce soir."
+        ),
+        "carousel": (
+            "Chaque slide donne un conseil directement applicable. "
+            "Formules courtes, verbes d'action, exemples du quotidien. "
+            "Le parent doit repartir avec quelque chose à faire dès ce soir."
+        ),
+    },
+    "❤️ Émotionnel": {
+        "label": "❤️ Émotionnel",
+        "topics": (
+            "Les sujets touchent le cœur. Ils parlent à la culpabilité, à l'épuisement, "
+            "à l'amour inconditionnel des parents. Identification immédiate, émotion forte, "
+            "sentiment d'être enfin compris."
+        ),
+        "carousel": (
+            "Le ton est chaleureux, intime, presque comme une lettre à un ami. "
+            "On valide les émotions du parent, on le soutient, on crée de la connexion. "
+            "Chaque mot doit provoquer 'c'est exactement ce que je vis'."
+        ),
+    },
+    "🔥 Viral": {
+        "label": "🔥 Viral",
+        "topics": (
+            "Les sujets cassent les croyances et surprennent. Contre-intuition, curiosity gap, "
+            "révélation inattendue. Format : 'Ce que personne ne te dit sur...', "
+            "'La vraie raison pour laquelle...', 'Ce que ton enfant essaie vraiment de te dire'. "
+            "Chaque titre doit provoquer 'je savais pas ça'."
+        ),
+        "carousel": (
+            "Chaque slide doit surprendre ou briser une idée reçue. "
+            "Utilise le curiosity gap, les révélations progressives, les formules contre-intuitives. "
+            "Le lecteur doit vouloir swiper pour découvrir la suite."
+        ),
+    },
+    "⚡ Putaclic": {
+        "label": "⚡ Putaclic",
+        "topics": (
+            "Maximum d'impact, scroll-stopper assumé. Provocation douce, tabou brisé, "
+            "formule choc mais jamais mensongère. "
+            "Ex : 'Non, ton enfant ne fait PAS exprès', 'Le mot que tu ne dois PLUS jamais dire à ton enfant TDAH', "
+            "'Ce médecin avait tort sur le TDAH'. "
+            "L'objectif : arrêter le scroll en 2 secondes."
+        ),
+        "carousel": (
+            "Hook ultra-percutant, dès la première ligne on provoque une réaction forte. "
+            "Chaque titre de slide est une mini-révélation. "
+            "Formules courtes, mots forts, rythme rapide. "
+            "L'objectif est la viralité maximale — sauvegardes, partages, commentaires."
+        ),
+    },
+}
+TON_LABELS = list(TON_LEVELS.keys())
+
 MOOD_EMOJI = {
     "colere": "😠", "content": "😄", "ecole": "🎒",
     "excite": "🤩", "fatigue": "😴", "icones": "⭐",
@@ -309,7 +382,7 @@ with col_title:
 def _build_and_store_carousel(sujet: str, palette_offset: int = 0) -> None:
     with st.spinner(f"✨ Génération du carrousel pour « {sujet} »…"):
         try:
-            carousel_data = generate_carousel(sujet)
+            carousel_data = generate_carousel(sujet, ton=_get_ton()["carousel"])
 
             humeur = carousel_data.get("humeur", "content")
             n_slides = len(carousel_data.get("slides", []))
@@ -437,12 +510,22 @@ def _make_zip(carousel: dict, caption_override: str = "") -> bytes:
 # ---------------------------------------------------------------------------
 st.markdown('<p class="section-title">💡 Choisis un sujet</p>', unsafe_allow_html=True)
 
+selected_ton = st.select_slider(
+    "Ton du contenu",
+    options=TON_LABELS,
+    value="🔥 Viral",
+    key="ton_select",
+)
+
+def _get_ton() -> dict:
+    return TON_LEVELS[st.session_state.get("ton_select", "🔥 Viral")]
+
 btn_gen, btn_new = st.columns([2, 1])
 with btn_gen:
     if st.button("✨ Générer des sujets", use_container_width=True, type="primary"):
         with st.spinner("Recherche de sujets…"):
             try:
-                topics = generate_topics(st.session_state.prev_topics)
+                topics = generate_topics(st.session_state.prev_topics, ton=_get_ton()["topics"])
                 st.session_state.topics = topics
                 st.session_state.prev_topics = list(set(st.session_state.prev_topics + topics))[-30:]
             except Exception as exc:
@@ -452,7 +535,7 @@ with btn_new:
         if st.button("🔀 Nouveaux sujets", use_container_width=True):
             with st.spinner("Nouveaux sujets…"):
                 try:
-                    topics = generate_topics(st.session_state.prev_topics)
+                    topics = generate_topics(st.session_state.prev_topics, ton=_get_ton()["topics"])
                     st.session_state.topics = topics
                     st.session_state.prev_topics = list(set(st.session_state.prev_topics + topics))[-30:]
                 except Exception as exc:
