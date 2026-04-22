@@ -16,7 +16,7 @@ load_dotenv(dotenv_path=Path(__file__).parent / "secrets" / ".env")
 def _load_favicon():
     try:
         from PIL import Image
-        p = Path(__file__).parent / "assets" / "images" / "content" / "content1.png"
+        p = Path(__file__).parent / "assets" / "images" / "CONTENT" / "content1.png"
         return Image.open(p) if p.exists() else "🧠"
     except Exception:
         return "🧠"
@@ -170,7 +170,7 @@ TON_LABELS = list(TON_LEVELS.keys())
 
 MOOD_EMOJI = {
     "colere": "😠", "content": "😄", "ecole": "🎒",
-    "excite": "🤩", "fatigue": "😴", "icones": "⭐",
+    "excite": "🤩", "fatigue": "😴",
     "nourriture": "🍎", "parents_adultes": "👨‍👩‍👧",
     "pensif": "🤔", "peur": "😨", "triste": "😢", "zen": "🧘",
 }
@@ -366,7 +366,7 @@ st.markdown(f"""
 # ---------------------------------------------------------------------------
 # Header
 # ---------------------------------------------------------------------------
-SPARKY_IMG = Path(__file__).parent / "assets" / "images" / "content" / "content1.png"
+SPARKY_IMG = Path(__file__).parent / "assets" / "images" / "CONTENT" / "content1.png"
 
 col_logo, col_title = st.columns([1, 12])
 with col_logo:

@@ -7,7 +7,7 @@ from typing import Optional
 ASSETS_DIR = Path(__file__).parent.parent / "assets" / "images"
 VALID_MOODS = {
     "colere", "content", "ecole", "excite", "fatigue",
-    "icones", "nourriture", "parents_adultes", "pensif",
+    "nourriture", "parents_adultes", "pensif",
     "peur", "triste", "zen"
 }
 
